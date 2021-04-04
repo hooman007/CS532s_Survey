@@ -14,7 +14,8 @@ def get_LRS2_Cfg():
 	#absolute path to the data directory which contains: 
 	# folders of: "main/", "pretrain/"
 	# files of "pretrain.txt", "train.txt", "test.txt", "val.txt"
-	args_lrs2["DATA_DIRECTORY"] = 'C:/Education/Canada/UBC_PHD/Year_1/Term2/CS_532S/Project/workspace/Datasets/LRS2'   
+	args_lrs2["DATA_DIRECTORY"] = 'C:/Education/Canada/UBC_PHD/Year_1/Term2/CS_532S/Project/workspace/Datasets/LRS2'
+	args_lrs2["TRAINED_FRONTEND_FILE"] = '../../models/pre-trained_models/deep_avsr_visual_frontend.pt' #absolute path to the trained visual frontend file
 
 	###########################################
 	################ data #####################
@@ -51,6 +52,7 @@ def get_LRS2_Cfg():
 	###########################################
 	############### training ##################
 	###########################################
+	args_lrs2["SEED"] = 19220297 #seed for random number generators
 	args_lrs2["BATCH_SIZE"] = 32 #minibatch size
 	args_lrs2["EPOCH_SIZE"] = 16384   #number of samples in one step (virtual epoch)
 	args_lrs2["NUM_EPOCHS"] = 1000 #maximum number of steps (Epochs) to train for (early stopping is used)
