@@ -20,7 +20,7 @@ class LRS2Pretrain(Dataset):
     A custom dataset class for the LRS2 pretrain (includes pretain, preval) dataset.
     """
 
-    def __init__(self, dataset, datadir, numWords, charToIx, stepSize, audioParams, noiseParams):
+    def __init__(self, dataset, datadir, numWords, charToIx, stepSize, audioParams, videoParams, noiseParams):
         super(LRS2Pretrain, self).__init__()
         with open(datadir + "/" + dataset + ".txt", "r") as f:
             lines = f.readlines()
@@ -30,6 +30,7 @@ class LRS2Pretrain(Dataset):
         self.dataset = dataset
         self.stepSize = stepSize
         self.audioParams = audioParams
+        self.videoParams = videoParams
         _, self.noise = wavfile.read(noiseParams["noiseFile"])
         self.noiseProb = noiseParams["noiseProb"]
         self.noiseSNR = noiseParams["noiseSNR"]
@@ -46,15 +47,16 @@ class LRS2Pretrain(Dataset):
             ixs = ixs[ixs < len(self.datalist)]
             index = np.random.choice(ixs)
 
-        #passing the audio file and the target file paths to the prepare function to obtain the input tensors
+        #passing the sample files and the target file paths to the prepare function to obtain the input tensors
         audioFile = self.datalist[index] + ".wav"
+        visualFeaturesFile = self.datalist[index] + ".npy"
         targetFile = self.datalist[index] + ".txt"
         if np.random.choice([True, False], p=[self.noiseProb, 1-self.noiseProb]):
             noise = self.noise
         else:
             noise = None
-        inp, trgt, inpLen, trgtLen = prepare_pretrain_input(audioFile, targetFile, noise, self.numWords, self.charToIx, self.noiseSNR,
-                                                            self.audioParams)
+        inp, trgt, inpLen, trgtLen = prepare_pretrain_input(audioFile, visualFeaturesFile, targetFile, noise, self.numWords,
+                                                            self.charToIx, self.noiseSNR, self.audioParams, self.videoParams)
         return inp, trgt, inpLen, trgtLen
 
 
@@ -67,15 +69,13 @@ class LRS2Pretrain(Dataset):
             return len(self.datalist)
 
 
-
-
 class LRS2Main(Dataset):
 
     """
     A custom dataset class for the LRS2 main (includes train, val, test) dataset
     """
 
-    def __init__(self, dataset, datadir, reqInpLen, charToIx, stepSize, audioParams, noiseParams):
+    def __init__(self, dataset, datadir, reqInpLen, charToIx, stepSize, audioParams, videoParams, noiseParams):
         super(LRS2Main, self).__init__()
         with open(datadir + "/" + dataset + ".txt", "r") as f:
             lines = f.readlines()
@@ -85,6 +85,7 @@ class LRS2Main(Dataset):
         self.dataset = dataset
         self.stepSize = stepSize
         self.audioParams = audioParams
+        self.videoParams = videoParams
         _, self.noise = wavfile.read(noiseParams["noiseFile"])
         self.noiseSNR = noiseParams["noiseSNR"]
         self.noiseProb = noiseParams["noiseProb"]
@@ -99,15 +100,16 @@ class LRS2Main(Dataset):
             ixs = ixs[ixs < len(self.datalist)]
             index = np.random.choice(ixs)
 
-        #passing the audio file and the target file paths to the prepare function to obtain the input tensors
+        #passing the sample files and the target file paths to the prepare function to obtain the input tensors
         audioFile = self.datalist[index] + ".wav"
+        visualFeaturesFile = self.datalist[index] + ".npy"
         targetFile = self.datalist[index] + ".txt"
         if np.random.choice([True, False], p=[self.noiseProb, 1-self.noiseProb]):
             noise = self.noise
         else:
             noise = None
-        inp, trgt, inpLen, trgtLen = prepare_main_input(audioFile, targetFile, noise, self.reqInpLen, self.charToIx, self.noiseSNR,
-                                                        self.audioParams)
+        inp, trgt, inpLen, trgtLen = prepare_main_input(audioFile, visualFeaturesFile, targetFile, noise, self.reqInpLen, self.charToIx,
+                                                        self.noiseSNR, self.audioParams, self.videoParams)
         return inp, trgt, inpLen, trgtLen
 
 
@@ -119,3 +121,4 @@ class LRS2Main(Dataset):
             return self.stepSize
         else:
             return len(self.datalist)
+        

@@ -10,14 +10,15 @@ from torch.nn.utils.rnn import pad_sequence
 import numpy as np
 from scipy import signal
 from scipy.io import wavfile
+import cv2 as cv
 from scipy.special import softmax
 
 
 
-def prepare_main_input(audioFile, targetFile, noise, reqInpLen, charToIx, noiseSNR, audioParams):
+def prepare_main_input(audioFile, visualFeaturesFile, targetFile, noise, reqInpLen, charToIx, noiseSNR, audioParams, videoParams):
 
     """
-    Function to convert the data sample (audio file, target file) in the main dataset into appropriate tensors.
+    Function to convert the data sample in the main dataset into appropriate tensors.
     """
 
     if targetFile is not None:
@@ -64,15 +65,29 @@ def prepare_main_input(audioFile, targetFile, noise, reqInpLen, charToIx, noiseS
     #computing STFT and taking only the magnitude of it
     _, _, stftVals = signal.stft(inputAudio, sampFreq, window=stftWindow, nperseg=sampFreq*stftWinLen, noverlap=sampFreq*stftOverlap,
                                  boundary=None, padded=False)
-    inp = np.abs(stftVals)
-    inp = inp.T
+    audInp = np.abs(stftVals)
+    audInp = audInp.T
 
 
-    #padding zero vectors to make the input length a multiple of 4
-    inpLen = int(np.ceil(len(inp)/4))
-    leftPadding = int(np.floor((4*inpLen - len(inp))/2))
-    rightPadding = int(np.ceil((4*inpLen - len(inp))/2))
-    inp = np.pad(inp, ((leftPadding,rightPadding),(0,0)), "constant")
+    #loading the visual features
+    vidInp = np.load(visualFeaturesFile)
+
+
+    #padding zero vectors to extend the audio and video length to a least possible integer length such that
+    #video length = 4 * audio length
+    if len(audInp)/4 >= len(vidInp):
+        inpLen = int(np.ceil(len(audInp)/4))
+        leftPadding = int(np.floor((4*inpLen - len(audInp))/2))
+        rightPadding = int(np.ceil((4*inpLen - len(audInp))/2))
+        audInp = np.pad(audInp, ((leftPadding,rightPadding),(0,0)), "constant")
+        leftPadding = int(np.floor((inpLen - len(vidInp))/2))
+        rightPadding = int(np.ceil((inpLen - len(vidInp))/2))
+        vidInp = np.pad(vidInp, ((leftPadding,rightPadding),(0,0)), "constant")
+    else:
+        inpLen = len(vidInp)
+        leftPadding = int(np.floor((4*inpLen - len(audInp))/2))
+        rightPadding = int(np.ceil((4*inpLen - len(audInp))/2))
+        audInp = np.pad(audInp, ((leftPadding,rightPadding),(0,0)), "constant")
 
 
     #checking whether the input length is greater than or equal to the required length
@@ -80,12 +95,15 @@ def prepare_main_input(audioFile, targetFile, noise, reqInpLen, charToIx, noiseS
     if inpLen < reqInpLen:
         leftPadding = int(np.floor((reqInpLen - inpLen)/2))
         rightPadding = int(np.ceil((reqInpLen - inpLen)/2))
-        inp = np.pad(inp, ((4*leftPadding,4*rightPadding),(0,0)), "constant")
+        audInp = np.pad(audInp, ((4*leftPadding,4*rightPadding),(0,0)), "constant")
+        vidInp = np.pad(vidInp, ((leftPadding,rightPadding),(0,0)), "constant")
 
-    inpLen = int(len(inp)/4)
+    inpLen = len(vidInp)
 
 
-    inp = torch.from_numpy(inp)
+    audInp = torch.from_numpy(audInp)
+    vidInp = torch.from_numpy(vidInp)
+    inp = (audInp,vidInp)
     inpLen = torch.tensor(inpLen)
     if targetFile is not None:
         trgt = torch.from_numpy(trgt)
@@ -97,10 +115,10 @@ def prepare_main_input(audioFile, targetFile, noise, reqInpLen, charToIx, noiseS
 
 
 
-def prepare_pretrain_input(audioFile, targetFile, noise, numWords, charToIx, noiseSNR, audioParams):
+def prepare_pretrain_input(audioFile, visualFeaturesFile, targetFile, noise, numWords, charToIx, noiseSNR, audioParams, videoParams):
 
     """
-    Function to convert the data sample (audio file, target file) in the pretrain dataset into appropriate tensors.
+    Function to convert the data sample in the pretrain dataset into appropriate tensors.
     """
 
     #reading the whole target file and the target
@@ -115,6 +133,7 @@ def prepare_pretrain_input(audioFile, targetFile, noise, numWords, charToIx, noi
     if len(words) <= numWords:
         trgtNWord = trgt
         sampFreq, inputAudio = wavfile.read(audioFile)
+        vidInp = np.load(visualFeaturesFile)
 
     else:
         #make a list of all possible sub-sequences with required number of words in the target
@@ -128,10 +147,15 @@ def prepare_pretrain_input(audioFile, targetFile, noise, numWords, charToIx, noi
         trgtNWord = nWords[ix]
 
         #reading the start and end times in the video corresponding to the selected sub-sequence
-        audioStartTime = float(lines[4+ix].split(" ")[1])
-        audioEndTime = float(lines[4+ix+numWords-1].split(" ")[2])
+        startTime = float(lines[4+ix].split(" ")[1])
+        endTime = float(lines[4+ix+numWords-1].split(" ")[2])
+        #loading the audio
         sampFreq, audio = wavfile.read(audioFile)
-        inputAudio = audio[int(sampFreq*audioStartTime):int(sampFreq*audioEndTime)]
+        inputAudio = audio[int(sampFreq*startTime):int(sampFreq*endTime)]
+        #loading visual features
+        videoFPS = videoParams["videoFPS"]
+        vidInp = np.load(visualFeaturesFile)
+        vidInp = vidInp[int(np.floor(videoFPS*startTime)):int(np.ceil(videoFPS*endTime))]
 
 
     #converting each character in target to its corresponding index
@@ -167,15 +191,25 @@ def prepare_pretrain_input(audioFile, targetFile, noise, numWords, charToIx, noi
     #computing the STFT and taking only the magnitude of it
     _, _, stftVals = signal.stft(inputAudio, sampFreq, window=stftWindow, nperseg=sampFreq*stftWinLen, noverlap=sampFreq*stftOverlap,
                                  boundary=None, padded=False)
-    inp = np.abs(stftVals)
-    inp = inp.T
+    audInp = np.abs(stftVals)
+    audInp = audInp.T
 
 
-    #padding zero vectors to make the input length a multiple of 4
-    inpLen = int(np.ceil(len(inp)/4))
-    leftPadding = int(np.floor((4*inpLen - len(inp))/2))
-    rightPadding = int(np.ceil((4*inpLen - len(inp))/2))
-    inp = np.pad(inp, ((leftPadding,rightPadding),(0,0)), "constant")
+    #padding zero vectors to extend the audio and video length to a least possible integer length such that
+    #video length = 4 * audio length
+    if len(audInp)/4 >= len(vidInp):
+        inpLen = int(np.ceil(len(audInp)/4))
+        leftPadding = int(np.floor((4*inpLen - len(audInp))/2))
+        rightPadding = int(np.ceil((4*inpLen - len(audInp))/2))
+        audInp = np.pad(audInp, ((leftPadding,rightPadding),(0,0)), "constant")
+        leftPadding = int(np.floor((inpLen - len(vidInp))/2))
+        rightPadding = int(np.ceil((inpLen - len(vidInp))/2))
+        vidInp = np.pad(vidInp, ((leftPadding,rightPadding),(0,0)), "constant")
+    else:
+        inpLen = len(vidInp)
+        leftPadding = int(np.floor((4*inpLen - len(audInp))/2))
+        rightPadding = int(np.ceil((4*inpLen - len(audInp))/2))
+        audInp = np.pad(audInp, ((leftPadding,rightPadding),(0,0)), "constant")
 
 
     #checking whether the input length is greater than or equal to the required length
@@ -184,12 +218,15 @@ def prepare_pretrain_input(audioFile, targetFile, noise, numWords, charToIx, noi
     if inpLen < reqInpLen:
         leftPadding = int(np.floor((reqInpLen - inpLen)/2))
         rightPadding = int(np.ceil((reqInpLen - inpLen)/2))
-        inp = np.pad(inp, ((4*leftPadding,4*rightPadding),(0,0)), "constant")
+        audInp = np.pad(audInp, ((4*leftPadding,4*rightPadding),(0,0)), "constant")
+        vidInp = np.pad(vidInp, ((leftPadding,rightPadding),(0,0)), "constant")
 
-    inpLen = int(len(inp)/4)
+    inpLen = len(vidInp)
 
 
-    inp = torch.from_numpy(inp)
+    audInp = torch.from_numpy(audInp)
+    vidInp = torch.from_numpy(vidInp)
+    inp = (audInp,vidInp)
     inpLen = torch.tensor(inpLen)
     trgt = torch.from_numpy(trgt)
     trgtLen = torch.tensor(trgtLen)
@@ -202,7 +239,8 @@ def collate_fn(dataBatch):
     """
     Collate function definition used in Dataloaders.
     """
-    inputBatch = pad_sequence([data[0] for data in dataBatch])
+    inputBatch = (pad_sequence([data[0][0] for data in dataBatch]),
+                  pad_sequence([data[0][1] for data in dataBatch]))
     if not any(data[1] is None for data in dataBatch):
         targetBatch = torch.cat([data[1] for data in dataBatch])
     else:
