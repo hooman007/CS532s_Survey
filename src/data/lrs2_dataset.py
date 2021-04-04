@@ -9,8 +9,8 @@ from torch.utils.data import Dataset
 from scipy.io import wavfile
 import numpy as np
 
-from .lrs2_utils import prepare_pretrain_input
-from .lrs2_utils import prepare_main_input
+from src.data.lrs2_utils import prepare_pretrain_input
+from src.data.lrs2_utils import prepare_main_input
 
 
 
