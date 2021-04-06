@@ -121,4 +121,37 @@ class LRS2Main(Dataset):
             return self.stepSize
         else:
             return len(self.datalist)
-        
+
+
+if __name__ == "__main__":
+    import matplotlib
+    import torch
+    from torch.utils.data import DataLoader, random_split
+    from src.data.lrs2_config import get_LRS2_Cfg
+    from src.data.lrs2_utils import collate_fn
+
+    args = get_LRS2_Cfg()
+
+    matplotlib.use("Agg")
+    np.random.seed(args["SEED"])
+    torch.manual_seed(args["SEED"])
+    gpuAvailable = torch.cuda.is_available()
+    device = torch.device("cuda" if gpuAvailable else "cpu")
+    kwargs = {"num_workers": 8, "pin_memory": True} if gpuAvailable else {}
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+    #declaring the train and validation datasets and their corresponding dataloaders
+    audioParams = {"stftWindow":args["STFT_WINDOW"], "stftWinLen":args["STFT_WIN_LENGTH"], "stftOverlap":args["STFT_OVERLAP"]}
+    videoParams = {"videoFPS":args["VIDEO_FPS"]}
+    noiseParams = {"noiseFile":args["DATA_DIRECTORY"] + "/noise.wav", "noiseProb":args["NOISE_PROBABILITY"], "noiseSNR":args["NOISE_SNR_DB"]}
+    trainData = LRS2Main("train", args["DATA_DIRECTORY"], args["MAIN_REQ_INPUT_LENGTH"], args["CHAR_TO_INDEX"], args["EPOCH_SIZE"],
+                         audioParams, videoParams, noiseParams)
+    trainLoader = DataLoader(trainData, batch_size=1, collate_fn=collate_fn, shuffle=True, **kwargs)
+
+    data_iter = iter(trainLoader)
+    # inp, trgt, inpLen, trgtLen = next(data_iter)
+    (inputBatch, targetBatch, inputLenBatch, targetLenBatch) = next(data_iter)
+
+    print("found data")
