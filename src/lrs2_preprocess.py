@@ -12,8 +12,8 @@ import cv2 as cv
 from scipy.io import wavfile
 from tqdm import tqdm
 
-from src.data.lrs2_config import get_LRS2_Cfg
-from src.models.deep_avsr.visual_frontend import VisualFrontend
+from data.lrs2_config import get_LRS2_Cfg
+from models.deep_avsr.visual_frontend import VisualFrontend
 
 def preprocess_sample(file, params):
     """
@@ -75,6 +75,9 @@ def preprocess_sample(file, params):
 def main():
 
     args_lrs2 = get_LRS2_Cfg()
+    args_lrs2["DATA_DIRECTORY"] = '../Datasets/LRS2'
+    args_lrs2["TRAINED_FRONTEND_FILE"] = 'models/pre-trained_models/deep_avsr_visual_frontend.pt' #absolute path to the trained visual frontend file
+
     np.random.seed(args_lrs2["SEED"])
     torch.manual_seed(args_lrs2["SEED"])
     gpuAvailable = torch.cuda.is_available()
@@ -136,27 +139,27 @@ def main():
 
 
     #Generating preval.txt for splitting the pretrain set into train and validation sets
-    print("\n\nGenerating the preval.txt file ....")
-
-    with open(args_lrs2["DATA_DIRECTORY"] + "/pretrain.txt", "r") as f:
-        lines = f.readlines()
-
-    if os.path.exists(args_lrs2["DATA_DIRECTORY"] + "/preval.txt"):
-        with open(args_lrs2["DATA_DIRECTORY"] + "/preval.txt", "r") as f:
-            lines.extend(f.readlines())
-
-    indices = np.arange(len(lines))
-    np.random.shuffle(indices)
-    valIxs = np.sort(indices[:int(np.ceil(args_lrs2["PRETRAIN_VAL_SPLIT"]*len(indices)))])
-    trainIxs = np.sort(indices[int(np.ceil(args_lrs2["PRETRAIN_VAL_SPLIT"]*len(indices))):])
-
-    lines = np.sort(np.array(lines))
-    with open(args_lrs2["DATA_DIRECTORY"] + "/pretrain.txt", "w") as f:
-        f.writelines(list(lines[trainIxs]))
-    with open(args_lrs2["DATA_DIRECTORY"] + "/preval.txt", "w") as f:
-        f.writelines(list(lines[valIxs]))
-
-    print("\npreval.txt file generated.\n")
+    # print("\n\nGenerating the preval.txt file ....")
+    #
+    # with open(args_lrs2["DATA_DIRECTORY"] + "/pretrain.txt", "r") as f:
+    #     lines = f.readlines()
+    #
+    # if os.path.exists(args_lrs2["DATA_DIRECTORY"] + "/preval.txt"):
+    #     with open(args_lrs2["DATA_DIRECTORY"] + "/preval.txt", "r") as f:
+    #         lines.extend(f.readlines())
+    #
+    # indices = np.arange(len(lines))
+    # np.random.shuffle(indices)
+    # valIxs = np.sort(indices[:int(np.ceil(args_lrs2["PRETRAIN_VAL_SPLIT"]*len(indices)))])
+    # trainIxs = np.sort(indices[int(np.ceil(args_lrs2["PRETRAIN_VAL_SPLIT"]*len(indices))):])
+    #
+    # lines = np.sort(np.array(lines))
+    # with open(args_lrs2["DATA_DIRECTORY"] + "/pretrain.txt", "w") as f:
+    #     f.writelines(list(lines[trainIxs]))
+    # with open(args_lrs2["DATA_DIRECTORY"] + "/preval.txt", "w") as f:
+    #     f.writelines(list(lines[valIxs]))
+    #
+    # print("\npreval.txt file generated.\n")
 
     return
 
