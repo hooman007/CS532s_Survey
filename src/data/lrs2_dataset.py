@@ -126,9 +126,9 @@ class LRS2Main(Dataset):
 if __name__ == "__main__":
     import matplotlib
     import torch
-    from torch.utils.data import DataLoader, random_split
     from src.data.lrs2_config import get_LRS2_Cfg
     from src.data.lrs2_utils import collate_fn
+    from torch.utils.data import DataLoader
 
     args = get_LRS2_Cfg()
 
