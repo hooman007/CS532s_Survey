@@ -7,8 +7,8 @@ import math
 def get_FC_LSTM():
     pass
 
-def get_CNN_LSTM():
-    return Video_CNN_LSTM
+def get_CNN_LSTM(args):
+    return Video_CNN_LSTM(args)
 
 
 class Video_CNN_LSTM(nn.Module):
@@ -28,10 +28,13 @@ class Video_CNN_LSTM(nn.Module):
         self.LSTM = nn.LSTM(input_size=512, hidden_size=args.hidden_dim,
                             num_layers=args.num_layers, dropout=args.dropout)
         self.outputConv = nn.Conv1d(args.hidden_dim, args.num_classes, kernel_size=1, stride=1, padding=0)
+
         return
 
     def forward(self, video_inputBatch):
         # input batch is (S, B, 512) video
         batch, _ = self.LSTM(video_inputBatch)  # batch (S, B, HiddenSize)
-        outputBatch = self.outputConv(bacth)  # (S, B, num_classes)
-        return outputBatch
+        batch = batch.transpose(0, 1).transpose(1, 2)
+        batch = self.outputConv(batch)  # (S, B, num_classes)
+        batch = batch.transpose(1, 2).transpose(0, 1)
+        return F.log_softmax(batch, dim=2)
