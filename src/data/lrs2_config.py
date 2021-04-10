@@ -14,8 +14,8 @@ def get_LRS2_Cfg():
 	#absolute path to the data directory which contains: 
 	# folders of: "main/", "pretrain/"
 	# files of "pretrain.txt", "train.txt", "test.txt", "val.txt"
-	args_lrs2["DATA_DIRECTORY"] = '../../../Datasets/LRS2'
-	args_lrs2["TRAINED_FRONTEND_FILE"] = '../../models/pre-trained_models/deep_avsr_visual_frontend.pt' #absolute path to the trained visual frontend file
+	args_lrs2["DATA_DIRECTORY"] = '../Datasets/LRS2'
+	args_lrs2["TRAINED_FRONTEND_FILE"] = 'models/pre-trained_models/deep_avsr_visual_frontend.pt' #absolute path to the trained visual frontend file
 
 	###########################################
 	################ data #####################
