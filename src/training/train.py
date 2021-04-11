@@ -81,7 +81,7 @@ def train(args):
     trainingWERCurve = list()
     validationWERCurve = list()
 
-    for step in range(args.epochs):
+    for epoch in range(args.epochs):
         trainingLoss = 0
         trainingCER = 0
         trainingWER = 0
