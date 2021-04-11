@@ -128,3 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .idea/
+*.txt
+*.mp4
+*.docx
+*.zip
+*.pt

@@ -1,4 +1,4 @@
-from .bimodal import get_CNN_LSTM, get_CNN_AttentionLSTM, get_CNN_self_attention_LSTM,\
+from .bimodal import get_CNN_LSTM_bimodal, get_CNN_AttentionLSTM, get_CNN_self_attention_LSTM,\
     get_CNN_self_attention_AttentionLSTM, get_CNN_self_attention_transformer, get_CNN_transformer
 from .unimodal import get_FC_LSTM, get_CNN_LSTM
 
