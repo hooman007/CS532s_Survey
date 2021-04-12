@@ -99,7 +99,7 @@ def train(args):
         trainingWER = 0
 
         for batch, (inputBatch, targetBatch, inputLenBatch, targetLenBatch) in enumerate(
-                tqdm(trainLoader, leave=False, desc="Train", ncols=75)):
+                tqdm(trainLoader, desc="Train", ncols=75)):
 
             inputBatch, targetBatch = ((inputBatch[0].float()).to(device), (inputBatch[1].float()).to(device)), (
                 targetBatch.int()).to(device)
@@ -153,8 +153,7 @@ def train(args):
         evalWER = 0
 
         for batch, (inputBatch, targetBatch, inputLenBatch, targetLenBatch) in enumerate(
-                tqdm(valLoader, leave=False, desc="Eval",
-                     ncols=75)):
+                tqdm(valLoader, desc="Eval", ncols=75)):
 
             inputBatch, targetBatch = ((inputBatch[0].float()).to(device), (inputBatch[1].float()).to(device)), (
                 targetBatch.int()).to(device)
