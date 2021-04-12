@@ -8,7 +8,7 @@ UNIMODAL_MODEL_FACTORY = {
 }
 
 BIMODAL_MODEL_FACTORY = {
-    'CNN_LSTM': get_CNN_LSTM,
+    'CNN_LSTM': get_CNN_LSTM_bimodal,
     'CNNSelfAttention_LSTM': get_CNN_self_attention_LSTM,
     'CNN_AttentionLSTM': get_CNN_AttentionLSTM,
     'CNNSelfAttention_AttentionLSTM': get_CNN_self_attention_AttentionLSTM,
