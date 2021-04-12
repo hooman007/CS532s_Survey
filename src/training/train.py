@@ -2,6 +2,7 @@ from src.models import BIMODAL_MODEL_FACTORY, UNIMODAL_MODEL_FACTORY
 from src.data import DATA_FACTORY
 from src.utils import LOSS_FACTORY
 import argparse
+import os
 import numpy as np
 import torch
 import torch.optim as optim
@@ -10,6 +11,7 @@ from torch.utils.data import DataLoader, random_split
 from src.data.lrs2_utils import collate_fn
 from src.data.lrs2_config import get_LRS2_Cfg
 import matplotlib
+import wandb   # to turn off wandb syncing use arg `--dryrun`
 from tqdm import tqdm
 from src.utils.ctc_utils import ctc_greedy_decode, ctc_search_decode
 from src.utils.metrics import compute_cer, compute_wer
@@ -22,6 +24,8 @@ def main():
                         help='BIMODAL: CNN_LSTM, CNNSelfAttention_LSTM, CNN_AttentionLSTM, '
                              'CNNSelfAttention_AttentionLSTM, CNN_transformer, CNNSelfAttention_transformer,'
                              ' \n, UNIMODAL: FC_LSTM, CNN_LSTM')
+    parser.add_argument('--runname', type=str, default=None, help='wandb run name, if None, model name is used')
+    parser.add_argument('--dryrun', action='store_true', default=False, help='if included, disables wandb')
     parser.add_argument('--modality', type=str, default='unimodal', help='unimodal, bimodal')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--batch_size', type=int, default=16, help='batch size for training')
@@ -45,6 +49,12 @@ def main():
     args = parser.parse_args()
     print(f"raw args = {args}")
 
+    if args.dryrun:
+        os.environ['WANDB_MODE'] = 'dryrun'
+
+    wandb.init(project='audio_visual_speech_recognition',
+               config=args, name=args.model if args.runname is None else args.runname,
+               notes="Speech Recognition Model Survey Research")
     train(args)
 
 
@@ -71,6 +81,8 @@ def train(args):
         model = BIMODAL_MODEL_FACTORY[args.model](args)
     model.to(device)
     # print(model)
+    if args.dryrun is not None:
+        wandb.watch(model)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     # they also had an scheduler that I skipped
@@ -129,6 +141,13 @@ def train(args):
         trainingLossCurve.append(trainingLoss)
         trainingWERCurve.append(trainingWER)
 
+        ######### Visualization using Weights & Biases ##########
+        wandb.log({"train/mean_CTC": trainingLoss,
+                   "train/mean_CER": trainingCER,
+                   "train/mean_WER": trainingWER,
+                   'epoch': epoch}, step=epoch)
+        # TODO ADD example sentences in log!
+
         evalLoss = 0
         evalCER = 0
         evalWER = 0
@@ -182,9 +201,18 @@ def train(args):
         validationWER = evalWER / len(valLoader)
         validationLossCurve.append(validationLoss)
         validationWERCurve.append(validationWER)
+
+        ######### Visualization using Weights & Biases ##########
+        wandb.log({"val/mean_CTC": validationLoss,
+                   "val/mean_CER": validationCER,
+                   "val/mean_WER": validationWER,
+                   'epoch': epoch}, step=epoch)
+
+        # TODO ADD example sentences in log!
+
         # printing the stats after each step
-        print("Step: %03d || Tr.Loss: %.6f  Val.Loss: %.6f || Tr.CER: %.3f  Val.CER: %.3f || Tr.WER: %.3f  Val.WER: %.3f"
-            % (step, trainingLoss, validationLoss, trainingCER, validationCER, trainingWER, validationWER))
+        print("epoch: %03d || Tr.Loss: %.6f  Val.Loss: %.6f || Tr.CER: %.3f  Val.CER: %.3f || Tr.WER: %.3f  Val.WER: %.3f"
+            % (epoch, trainingLoss, validationLoss, trainingCER, validationCER, trainingWER, validationWER))
 
 
 if __name__ == '__main__':
