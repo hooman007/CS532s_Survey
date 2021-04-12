@@ -1,6 +1,6 @@
 #preparing for download
 #source: https://gist.github.com/KarthikMAM/d8ebde4db84a72b083df0e14242edb1a
-for i in {1..19}
+for i in {1..9}
 do
   printf "\n\n------------------------- Downloading $i th speaker -------------------------\n\n"
   #download the audio of the ith speaker

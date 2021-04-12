@@ -65,8 +65,7 @@ WINDOW_WIDTH = 40
 #FRAME_HEIGHT = 288
 #FRAME_WIDTH = 360
 
-#DATA_GROUPS = ["s2","s3","s4","s5","s6","s7","s8","s9"]
-DATA_GROUPS = ["s1"]
+DATA_GROUPS = ["s1","s2","s3","s4","s5","s6","s7","s8","s9"]
 
 
 for DATA_GROUP in DATA_GROUPS:

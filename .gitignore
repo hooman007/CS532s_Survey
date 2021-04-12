@@ -133,3 +133,7 @@ dmypy.json
 *.docx
 *.zip
 *.pt
+*.mpg
+grid_dataloader/GRID_DATA/__MACOSX/
+*.npy
+*.wav
