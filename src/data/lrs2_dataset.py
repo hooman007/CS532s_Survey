@@ -81,9 +81,6 @@ class LRS2Main(Dataset):
         with open(datadir + "/" + dataset + ".txt", "r") as f:
             lines = f.readlines()
         self.datalist = [datadir + "/main/" + line.strip().split(" ")[0] for line in lines]
-        if dataset == "train":
-            random.shuffle(self.datalist)
-            self.datalist = self.datalist[:int(subset_ratio*len(self.datalist))]
         self.reqInpLen = reqInpLen
         self.charToIx = charToIx
         self.dataset = dataset
@@ -93,6 +90,12 @@ class LRS2Main(Dataset):
         _, self.noise = wavfile.read(noiseParams["noiseFile"])
         self.noiseSNR = noiseParams["noiseSNR"]
         self.noiseProb = noiseParams["noiseProb"]
+
+        if dataset == "train":
+            random.shuffle(self.datalist)
+            self.datalist = self.datalist[:int(subset_ratio*len(self.datalist))]
+            self.stepSize = int(subset_ratio*self.stepSize)
+
         return
 
 
