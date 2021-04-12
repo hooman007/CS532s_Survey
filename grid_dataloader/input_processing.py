@@ -3,6 +3,7 @@
 import numpy as np
 
 from os import listdir
+import os
 from os.path import isfile, join
 
 from matplotlib import pyplot as plt
@@ -11,7 +12,7 @@ import cv2
 
 
 #Function from: https://www.datacamp.com/community/tutorials/face-detection-python-opencv
-haar_cascade_face = cv2.CascadeClassifier('./haarcascades/haarcascade_frontalface_default.xml')
+haar_cascade_face = cv2.CascadeClassifier(cv2.data.haarcascades+'haarcascade_frontalface_default.xml')
 def detect_faces(cascade, test_image, scaleFactor = 1.2):
     # create a copy of the image to prevent any changes to the original one.
     image_copy = test_image.copy()
@@ -65,7 +66,7 @@ WINDOW_WIDTH = 40
 #FRAME_WIDTH = 360
 
 #DATA_GROUPS = ["s2","s3","s4","s5","s6","s7","s8","s9"]
-DATA_GROUPS = ["s9"]
+DATA_GROUPS = ["s1"]
 
 
 for DATA_GROUP in DATA_GROUPS:
@@ -83,6 +84,11 @@ for DATA_GROUP in DATA_GROUPS:
             print("%i / %i seen"%(i, len(mpg_files_list)))
 
         #try:
+
+        videoFile = './GRID_DATA/'+DATA_GROUP+'/'+mpg_files_list[i]
+        audioFile = './GRID_DATA/'+DATA_GROUP+'/inputs/input_'+mpg_files_list[i][:-4]+'.wav'
+        v2aCommand = "ffmpeg -y -v quiet -i " + videoFile + " -ac 1 -ar 16000 -vn " + audioFile
+        os.system(v2aCommand)
 
         vidcap = cv2.VideoCapture('./GRID_DATA/'+DATA_GROUP+'/'+mpg_files_list[i])
 
@@ -170,7 +176,7 @@ for DATA_GROUP in DATA_GROUPS:
                     curr_arr[count]=(curr_mouth-np.min(curr_mouth))/(np.max(curr_mouth)-np.min(curr_mouth))
                 except:
                     print("ERROR IN SELECTING AREA FOR MOUTH")
-                    import pdb; pdb.set_trace()
+                    # import pdb; pdb.set_trace()
 
             #If face not present in this frame
             else:
