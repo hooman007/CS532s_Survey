@@ -8,6 +8,7 @@ https://github.com/lordmartian/deep_avsr
 from torch.utils.data import Dataset
 from scipy.io import wavfile
 import numpy as np
+import random
 
 from src.data.lrs2_utils import prepare_pretrain_input
 from src.data.lrs2_utils import prepare_main_input
@@ -75,11 +76,14 @@ class LRS2Main(Dataset):
     A custom dataset class for the LRS2 main (includes train, val, test) dataset
     """
 
-    def __init__(self, dataset, datadir, reqInpLen, charToIx, stepSize, audioParams, videoParams, noiseParams):
+    def __init__(self, dataset, datadir, reqInpLen, charToIx, stepSize, audioParams, videoParams, noiseParams, subset_ratio=0.2):
         super(LRS2Main, self).__init__()
         with open(datadir + "/" + dataset + ".txt", "r") as f:
             lines = f.readlines()
         self.datalist = [datadir + "/main/" + line.strip().split(" ")[0] for line in lines]
+        if dataset == "train":
+            random.shuffle(self.datalist)
+            self.datalist = self.datalist[:subset_ratio*len(self.datalist)]
         self.reqInpLen = reqInpLen
         self.charToIx = charToIx
         self.dataset = dataset
