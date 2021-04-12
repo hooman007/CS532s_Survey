@@ -83,7 +83,7 @@ class LRS2Main(Dataset):
         self.datalist = [datadir + "/main/" + line.strip().split(" ")[0] for line in lines]
         if dataset == "train":
             random.shuffle(self.datalist)
-            self.datalist = self.datalist[:subset_ratio*len(self.datalist)]
+            self.datalist = self.datalist[:int(subset_ratio*len(self.datalist))]
         self.reqInpLen = reqInpLen
         self.charToIx = charToIx
         self.dataset = dataset
