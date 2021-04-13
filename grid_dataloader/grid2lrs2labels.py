@@ -28,7 +28,7 @@ def grid2lrs2labels(grid_embeddings):
     for key in keys:
         ## NOTE: A counter was used instead of i%6==0 because % is computationally inefficient
 
-        curr_word=command2char[key]
+        curr_word=gd.grid2chars[key]
 
         chars_list.append(curr_word.copy())
 
@@ -47,13 +47,7 @@ def grid2lrs2labels(grid_embeddings):
 
     flat_list = [item for sublist in chars_list for item in sublist]
 
-    char2idx = {" ":1, "'":22, "1":30, "0":29, "3":37, "2":32, "5":34, "4":38, "7":36, "6":35, "9":31, "8":33,
-                                  "A":5, "C":17, "B":20, "E":2, "D":12, "G":16, "F":19, "I":6, "H":9, "K":24, "J":25, "M":18,
-                                  "L":11, "O":4, "N":7, "Q":27, "P":21, "S":8, "R":10, "U":13, "T":3, "W":15, "V":23, "Y":14,
-                                  "X":26, "Z":28, "<EOS>":39}    #character to index mapping
-
-
-    targetBatch = torch.Tensor([char2idx.get(key) for key in flat_list]).type(torch.LongTensor)
+    targetBatch = torch.Tensor([ld.char2idx.get(key) for key in flat_list]).type(torch.LongTensor)
     targetLenBatch = torch.Tensor(targetLenBatch).type(torch.LongTensor)
 
     return targetBatch, targetLenBatch
