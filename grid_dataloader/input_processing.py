@@ -5,6 +5,16 @@ import numpy as np
 from os import listdir
 import os
 from os.path import isfile, join
+import torch
+from tqdm import tqdm
+import torch.nn as nn
+import torch
+import os
+import cv2 as cv
+from scipy.io import wavfile
+from tqdm import tqdm
+from src.data.lrs2_config import get_LRS2_Cfg
+from src.models.deep_avsr.visual_frontend import VisualFrontend
 
 from matplotlib import pyplot as plt
 
@@ -70,26 +80,26 @@ DATA_GROUPS = ["s1","s2","s3","s4","s5","s6","s7","s8","s9"]
 
 for DATA_GROUP in DATA_GROUPS:
 
-    all_files = [f for f in listdir('./GRID_DATA/'+DATA_GROUP) if isfile(join('./GRID_DATA/'+DATA_GROUP, f))]
-
+    all_files = [f for f in listdir('./grid_dataloader/GRID_DATA/'+DATA_GROUP) if isfile(join('./grid_dataloader/GRID_DATA/'+DATA_GROUP, f))]
+    all_data =[]
     mpg_files_list = []
 
     for i in range(len(all_files)):
         if '.mpg' in all_files[i]:
             mpg_files_list.append(all_files[i])
 
-    for i in range(len(mpg_files_list)):
+    for i in tqdm(range(len(mpg_files_list))):
         if(i%100==0):
             print("%i / %i seen"%(i, len(mpg_files_list)))
 
         #try:
 
-        videoFile = './GRID_DATA/'+DATA_GROUP+'/'+mpg_files_list[i]
-        audioFile = './GRID_DATA/'+DATA_GROUP+'/inputs/input_'+mpg_files_list[i][:-4]+'.wav'
+        videoFile = './grid_dataloader/GRID_DATA/'+DATA_GROUP+'/'+mpg_files_list[i]
+        audioFile = './grid_dataloader/GRID_DATA/'+DATA_GROUP+'/inputs/input_'+mpg_files_list[i][:-4]+'.wav'
         v2aCommand = "ffmpeg -y -v quiet -i " + videoFile + " -ac 1 -ar 16000 -vn " + audioFile
         os.system(v2aCommand)
 
-        vidcap = cv2.VideoCapture('./GRID_DATA/'+DATA_GROUP+'/'+mpg_files_list[i])
+        vidcap = cv2.VideoCapture('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/'+mpg_files_list[i])
 
         success = True
         count = 0
@@ -186,11 +196,30 @@ for DATA_GROUP in DATA_GROUPS:
             #if(count==70):
             #    import pdb; pdb.set_trace()
 
-        np.save('./GRID_DATA/'+DATA_GROUP+'/inputs/input_'+mpg_files_list[i][:-4]+'.npy',curr_arr)
 
-        #import pdb; pdb.set_trace()
+        # curr_arr would be 75, 40 , 40
 
-        #except:
-        #    print("\n")
-        #    print("ERROR reading file:",str(i))
-        #    print("\n")
+        upsample = nn.Upsample(size=[112, 112], mode='bilinear')
+        curr_arr = np.expand_dims(curr_arr, 1) # 75, 1, 40, 40
+        curr_arr = upsample(torch.from_numpy(curr_arr))  # 75, 1, 112, 112
+
+        np.random.seed(1234)
+        torch.manual_seed(1234)
+        gpuAvailable = torch.cuda.is_available()
+        device = torch.device("cuda" if gpuAvailable else "cpu")
+
+        # declaring the visual frontend module
+        vf = VisualFrontend()
+        vf.load_state_dict(torch.load('models/pre-trained_models/deep_avsr_visual_frontend.pt', map_location=device))
+        vf.to(device)
+
+        curr_arr = np.expand_dims(curr_arr, 0) # 1, 75, 1, 112, 112
+        inputBatch = torch.from_numpy(curr_arr)
+        inputBatch = (inputBatch.float()).to(device)
+        vf.eval()
+        with torch.no_grad():
+            outputBatch = vf(inputBatch) # 1 , 75, 512
+        out = torch.squeeze(outputBatch, axis=1) # 75, 512
+        out = out.cpu().numpy()
+        np.save('./grid_dataloader/GRID_DATA/' + DATA_GROUP + '/inputs/input_' + mpg_files_list[i][:-4] + '.npy', out)
+
