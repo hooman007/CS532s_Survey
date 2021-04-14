@@ -25,7 +25,7 @@ def main():
                         help='BIMODAL: CNN_LSTM, CNNSelfAttention_LSTM, CNN_AttentionLSTM, '
                              'CNNSelfAttention_AttentionLSTM, CNN_transformer, CNNSelfAttention_transformer,'
                              ' \n, UNIMODAL: FC_LSTM, CNN_LSTM')
-    parser.add_argument('--runname', type=str, default=None, help='wandb run name, if None, model name is used')
+    parser.add_argument('--run_name', type=str, default=None, help='wandb run name, if None, model name is used')
     parser.add_argument('--dryrun', action='store_true', default=False, help='if included, disables wandb')
     parser.add_argument('--modality', type=str, default='bimodal', help='unimodal, bimodal')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
@@ -55,7 +55,7 @@ def main():
         os.environ['WANDB_MODE'] = 'dryrun'
 
     wandb.init(project='audio_visual_speech_recognition',
-               config=args, name=args.model if args.runname is None else args.runname,
+               config=args, name=args.model if args.run_name is None else args.run_name,
                notes="Speech Recognition Model Survey Research")
     train(args)
 
@@ -151,7 +151,7 @@ def train(args):
                    "train/mean_CER": trainingCER,
                    "train/mean_WER": trainingWER,
                    'epoch': epoch})#, step=epoch)
-        # visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'train', epoch)
+        visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'train', epoch)
 
         evalLoss = 0
         evalCER = 0
@@ -215,7 +215,7 @@ def train(args):
                    "val/mean_WER": validationWER,
                    'lr': optimizer.param_groups[0]['lr'],
                    'epoch': epoch})#, step=epoch)
-        # visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'val', epoch)
+        visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'val', epoch)
 
         # printing the stats after each step
         print("epoch: %03d || Tr.Loss: %.6f  Val.Loss: %.6f || Tr.CER: %.3f  Val.CER: %.3f || Tr.WER: %.3f  Val.WER: %.3f"
