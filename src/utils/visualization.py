@@ -21,11 +21,13 @@ def visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, target
     for n in range(len(preds)):
         pred = preds[n].numpy()[:-1]
         pred_chars = [INDEX_TO_CHAR[indx] for indx in pred]
-        pred_sentences.append(''.join([charElem for charElem in pred_chars]))
+        str = ""
+        pred_sentences.append(str.join(pred_chars))
 
         trgt = trgts[n].numpy()[:-1]
         trgt_chars = [INDEX_TO_CHAR[indx] for indx in trgt]
-        trgt_sentences.append(''.join([charElem for charElem in trgt_chars]))
+        str = ""
+        trgt_sentences.append(str.join(trgt_chars))
 
     transcription = {'Target': trgt_sentences, 'Prediction': pred_sentences}
     df = pd.DataFrame(data=transcription)
