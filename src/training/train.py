@@ -207,7 +207,7 @@ def train(args):
         validationWERCurve.append(validationWER)
 
         #make a scheduler step
-        scheduler.step(validationWER)
+        scheduler.step(validationLoss)
 
         ######### Visualization using Weights & Biases ##########
         wandb.log({"val/mean_CTC": validationLoss,
