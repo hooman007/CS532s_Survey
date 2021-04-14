@@ -15,6 +15,7 @@ import wandb   # to turn off wandb syncing use arg `--dryrun`
 from tqdm import tqdm
 from src.utils.ctc_utils import ctc_greedy_decode, ctc_search_decode
 from src.utils.metrics import compute_cer, compute_wer
+from src.utils.visualization import visualize_sentences
 
 
 
@@ -150,7 +151,7 @@ def train(args):
                    "train/mean_CER": trainingCER,
                    "train/mean_WER": trainingWER,
                    'epoch': epoch}, step=epoch)
-        # TODO ADD example sentences in log!
+        visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'train', epoch)
 
         evalLoss = 0
         evalCER = 0
@@ -214,8 +215,7 @@ def train(args):
                    "val/mean_WER": validationWER,
                    'lr': optimizer.param_groups[0]['lr'],
                    'epoch': epoch}, step=epoch)
-
-        # TODO ADD example sentences in log!
+        visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'val', epoch)
 
         # printing the stats after each step
         print("epoch: %03d || Tr.Loss: %.6f  Val.Loss: %.6f || Tr.CER: %.3f  Val.CER: %.3f || Tr.WER: %.3f  Val.WER: %.3f"
