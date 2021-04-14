@@ -79,7 +79,7 @@ DATA_GROUPS = ["s1","s2","s3","s4","s5","s6","s7","s8","s9"]
 
 
 for DATA_GROUP in DATA_GROUPS:
-
+    print(f"doing {DATA_GROUP} now")
     all_files = [f for f in listdir('./grid_dataloader/GRID_DATA/'+DATA_GROUP) if isfile(join('./grid_dataloader/GRID_DATA/'+DATA_GROUP, f))]
     all_data =[]
     mpg_files_list = []
@@ -219,7 +219,8 @@ for DATA_GROUP in DATA_GROUPS:
         vf.eval()
         with torch.no_grad():
             outputBatch = vf(inputBatch) # 1 , 75, 512
-        out = torch.squeeze(outputBatch, axis=1) # 75, 512
+        out = torch.squeeze(outputBatch, axis=0) # 75, 512
         out = out.cpu().numpy()
+        # print(out.shape)
         np.save('./grid_dataloader/GRID_DATA/' + DATA_GROUP + '/inputs/input_' + mpg_files_list[i][:-4] + '.npy', out)
 

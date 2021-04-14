@@ -27,7 +27,7 @@ def grid2lrs2labels(grid_embeddings):
     ## NOTE: I WAS UNSURE ABOUT WHAT TO DO FOR THE targetLenBatch EOS CHAR.
     for key in keys:
         ## NOTE: A counter was used instead of i%6==0 because % is computationally inefficient
-
+        key = key.item()
         curr_word=gd.grid2chars[key]
 
         chars_list.append(curr_word.copy())

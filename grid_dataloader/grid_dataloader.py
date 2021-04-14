@@ -3,14 +3,20 @@ import torch
 
 from os import listdir
 from os.path import isfile, join
-
+from src.data.lrs2_utils import collate_fn
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from scipy import signal
 from scipy.io import wavfile
 import cv2 as cv
 from scipy.special import softmax
-from models.deep_avsr.visual_frontend import VisualFrontend
+from src.models.deep_avsr.visual_frontend import VisualFrontend
+from grid2lrs2labels import grid2lrs2labels
+from torch.utils.data import DataLoader, random_split
+
+import grid_dictionaries as gd
+import lrs2_dictionaries as ld
+
 
 ## NOTE: Depending on how training is done, the below might need to be tweaked
 ##       in order to shuffle the training among all speakers. This may also
@@ -19,8 +25,8 @@ from models.deep_avsr.visual_frontend import VisualFrontend
 
 DATA_GROUP = "s1"
 
-all_input_files = [f for f in listdir('./GRID_DATA/'+DATA_GROUP+'/inputs') if isfile(join('./GRID_DATA/'+DATA_GROUP+'/inputs', f))]
-all_label_files = [f for f in listdir('./GRID_DATA/'+DATA_GROUP+'/labels') if isfile(join('./GRID_DATA/'+DATA_GROUP+'/labels', f))]
+all_input_files = [f for f in listdir('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/inputs') if isfile(join('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/inputs', f))]
+all_label_files = [f for f in listdir('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/labels') if isfile(join('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/labels', f))]
 
 input_files_list = []
 audio_files_list = []
@@ -66,23 +72,14 @@ class Dataset(torch.utils.data.Dataset):
 
 
 
-class Grid_vf(Dataset):
+class Grid_vf(torch.utils.data.Dataset):
 
     """
     A custom dataset class for the grid (includes train, val, test) dataset
     """
 
-    def __init__(self, dataset, datadir, reqInpLen, charToIx, stepSize, audioParams, videoParams, noiseParams):
+    def __init__(self,  input_file_ids, audio_file_ids, label_file_ids, root_directory):
         super(Grid_vf, self).__init__()
-        # with open(datadir + "/" + dataset + ".txt", "r") as f:
-        #     lines = f.readlines()
-        # self.datalist = [datadir + "/main/" + line.strip().split(" ")[0] for line in lines]
-        # self.reqInpLen = reqInpLen
-        # self.charToIx = charToIx
-        # self.dataset = dataset
-        # self.stepSize = stepSize
-        # self.audioParams = audioParams
-        # self.videoParams = videoParams
         _, self.noise = wavfile.read('data/LRS2/noise.wav')
         self.noiseSNR = 0
         self.noiseProb = 0.25
@@ -90,32 +87,23 @@ class Grid_vf(Dataset):
         self.input_file_list = input_file_ids
         self.audio_file_list = audio_file_ids
         self.label_file_list = label_file_ids
-
         self.root_directory = root_directory
         return
 
 
     def __getitem__(self, index):
-        #using the same procedure as in pretrain dataset class only for the train dataset
-        # if self.dataset == "train":
-        #     base = self.stepSize * np.arange(int(len(self.datalist)/self.stepSize)+1)
-        #     ixs = base + index
-        #     ixs = ixs[ixs < len(self.datalist)]
-        #     index = np.random.choice(ixs)
-
-        #passing the sample files and the target file paths to the prepare function to obtain the input tensors
         input_ID = self.input_file_list[index]
         label_ID = self.label_file_list[index]
         audio_ID = self.audio_file_list[index]
 
-        # label_arr = np.load(self.root_directory + 'labels/' + label_ID) # batch_size, 6, 51
-        audioFile = self.root_directory + 'inputs/' + audio_ID
+        label_arr = np.load(self.root_directory + 'labels/' + label_ID) # batch_size, 6, 51
+        label_arr = torch.from_numpy(np.expand_dims(label_arr, 0))
+        trgt, trgtLen = grid2lrs2labels(label_arr)
 
-        trgt = []
-        trgtLen = []
         # get these from Robert
 
         # STFT feature extraction
+        audioFile = self.root_directory + 'inputs/' + audio_ID
         stftWindow = "hamming"
         stftWinLen = 0.040
         stftOverlap = 0.030
@@ -128,13 +116,13 @@ class Grid_vf(Dataset):
         inputAudio = inputAudio / np.max(np.abs(inputAudio))
 
         # adding noise to the audio
-        if self.noise is not None:
-            pos = np.random.randint(0, len(noise) - len(inputAudio) + 1)
-            noise = noise[pos:pos + len(inputAudio)]
-            noise = noise / np.max(np.abs(noise))
-            gain = 10 ** (noiseSNR / 10)
-            noise = noise * np.sqrt(np.sum(inputAudio ** 2) / (gain * np.sum(noise ** 2)))
-            inputAudio = inputAudio + noise
+        # if self.noise is not None:
+        #     pos = np.random.randint(0, len(noise) - len(inputAudio) + 1)
+        #     noise = noise[pos:pos + len(inputAudio)]
+        #     noise = noise / np.max(np.abs(noise))
+        #     gain = 10 ** (noiseSNR / 10)
+        #     noise = noise * np.sqrt(np.sum(inputAudio ** 2) / (gain * np.sum(noise ** 2)))
+        #     inputAudio = inputAudio + noise
 
         # normalising the audio to unit power
         inputAudio = inputAudio / np.sqrt(np.sum(inputAudio ** 2) / len(inputAudio))
@@ -153,7 +141,8 @@ class Grid_vf(Dataset):
         # video length = 4 * audio length
         if len(audInp) / 4 >= len(vidInp):
             inpLen = int(np.ceil(len(audInp) / 4))
-            leftPadding = int(np.floor((4 * inpLen - len(audInp)) / 2))
+            leftPadding = int\
+                (np.floor((4 * inpLen - len(audInp)) / 2))
             rightPadding = int(np.ceil((4 * inpLen - len(audInp)) / 2))
             audInp = np.pad(audInp, ((leftPadding, rightPadding), (0, 0)), "constant")
             leftPadding = int(np.floor((inpLen - len(vidInp)) / 2))
@@ -165,13 +154,14 @@ class Grid_vf(Dataset):
             rightPadding = int(np.ceil((4 * inpLen - len(audInp)) / 2))
             audInp = np.pad(audInp, ((leftPadding, rightPadding), (0, 0)), "constant")
 
-        # checking whether the input length is greater than or equal to the required length
-        # if not, extending the input by padding zero vectors
-        if inpLen < reqInpLen:
-            leftPadding = int(np.floor((reqInpLen - inpLen) / 2))
-            rightPadding = int(np.ceil((reqInpLen - inpLen) / 2))
-            audInp = np.pad(audInp, ((4 * leftPadding, 4 * rightPadding), (0, 0)), "constant")
-            vidInp = np.pad(vidInp, ((leftPadding, rightPadding), (0, 0)), "constant")
+        # # checking whether the input length is greater than or equal to the required length
+        # # if not, extending the input by padding zero vectors
+        # reqInpLen = 10
+        # if inpLen < reqInpLen:
+        #     leftPadding = int(np.floor((reqInpLen - inpLen) / 2))
+        #     rightPadding = int(np.ceil((reqInpLen - inpLen) / 2))
+        #     audInp = np.pad(audInp, ((4 * leftPadding, 4 * rightPadding), (0, 0)), "constant")
+        #     vidInp = np.pad(vidInp, ((leftPadding, rightPadding), (0, 0)), "constant")
 
         inpLen = len(vidInp)
 
@@ -193,21 +183,24 @@ class Grid_vf(Dataset):
         #using step size only for train dataset and not for val and test datasets because
         #the size of val and test datasets is smaller than step size and we generally want to validate and test
         #on the complete dataset
-        if self.dataset == "train":
-            return self.stepSize
-        else:
-            return len(self.datalist)
+        return len(self.input_file_list)
 
 
 
-params = {'batch_size': 50,
-          'shuffle': False}
 
-train_set = Dataset(input_files_list,label_files_list,'./GRID_DATA/s1/')
-train_dataloader = torch.utils.data.DataLoader(train_set, **params)
 
-with torch.no_grad():
-    for i, batch in enumerate(train_dataloader):
-        (curr_input_vecs, curr_label_vecs) = (batch[0].cuda(),batch[1].cuda())
+gpuAvailable = torch.cuda.is_available()
+print(len(input_files_list), len(audio_files_list), len(label_files_list))
+train_set = Grid_vf(input_files_list, audio_files_list, label_files_list, './grid_dataloader/GRID_DATA/s1/')
+kwargs = {"num_workers": 1, "pin_memory": True} if gpuAvailable else {}
+trainLoader = DataLoader(train_set, batch_size=4, shuffle=False, collate_fn=collate_fn, **kwargs)
+# train_set = Dataset(input_files_list,label_files_list,'./GRID_DATA/s1/')
+# train_dataloader = torch.utils.data.DataLoader(train_set, **params)
 
-        import pdb; pdb.set_trace()
+data_iter = iter(trainLoader)
+    # inp, trgt, inpLen, trgtLen = next(data_iter)
+(inputBatch, targetBatch, inputLenBatch, targetLenBatch) = next(data_iter)
+print(inputBatch[0].shape, inputBatch[1].shape) # ([580, 8, 321]), [145, 8, 512]
+print(targetBatch) # blue 2 g, orange 3 4 -> [, , , , ]
+print(targetLenBatch.shape) # -> [8, 10]
+print("found data")

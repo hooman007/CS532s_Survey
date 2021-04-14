@@ -184,7 +184,7 @@ def train(args):
         validationWERCurve.append(validationWER)
         # printing the stats after each step
         print("Step: %03d || Tr.Loss: %.6f  Val.Loss: %.6f || Tr.CER: %.3f  Val.CER: %.3f || Tr.WER: %.3f  Val.WER: %.3f"
-            % (step, trainingLoss, validationLoss, trainingCER, validationCER, trainingWER, validationWER))
+            % (epoch, trainingLoss, validationLoss, trainingCER, validationCER, trainingWER, validationWER))
 
 
 if __name__ == '__main__':
