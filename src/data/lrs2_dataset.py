@@ -92,7 +92,7 @@ class LRS2Main(Dataset):
         self.noiseProb = noiseParams["noiseProb"]
 
         if dataset == "train":
-            random.shuffle(self.datalist)
+            random.Random(4).shuffle(self.datalist)
             self.datalist = self.datalist[:int(subset_ratio*len(self.datalist))]
             self.stepSize = int(subset_ratio*self.stepSize)
 
