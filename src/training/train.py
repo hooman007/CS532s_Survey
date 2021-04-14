@@ -83,8 +83,8 @@ def train(args):
         model = BIMODAL_MODEL_FACTORY[args.model](args)
     model.to(device)
     # print(model)
-    if args.dryrun is not None:
-        wandb.watch(model)
+    # if args.dryrun is not None:
+    #     wandb.watch(model)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     # they also had an scheduler that I skipped
