@@ -21,17 +21,17 @@ from src.utils.visualization import visualize_sentences
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='CNN_LSTM',
+    parser.add_argument('--model', type=str, default='CNNSelfAttention_transformer',
                         help='BIMODAL: CNN_LSTM, CNNSelfAttention_LSTM, CNN_AttentionLSTM, '
                              'CNNSelfAttention_AttentionLSTM, CNN_transformer, CNNSelfAttention_transformer,'
                              ' \n, UNIMODAL: FC_LSTM, CNN_LSTM')
     parser.add_argument('--runname', type=str, default=None, help='wandb run name, if None, model name is used')
     parser.add_argument('--dryrun', action='store_true', default=False, help='if included, disables wandb')
-    parser.add_argument('--modality', type=str, default='unimodal', help='unimodal, bimodal')
+    parser.add_argument('--modality', type=str, default='bimodal', help='unimodal, bimodal')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--lr_final', type=float, default=1e-6, help='final learning rate')
-    parser.add_argument('--batch_size', type=int, default=16, help='batch size for training')
-    parser.add_argument('--epochs', type=int, default=60, help='number of epochs for training')
+    parser.add_argument('--batch_size', type=int, default=32, help='batch size for training')
+    parser.add_argument('--epochs', type=int, default=500, help='number of epochs for training')
     # parser.add_argument('--optimizer', type=str, default="adam", help='optimizer for training')
     parser.add_argument('--loss', type=str, default='seq2seq', help='seq2seq or CTC')
     parser.add_argument('--data', type=str, default='LRS2', help='grid or LRS2')
