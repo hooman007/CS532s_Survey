@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--dryrun', action='store_true', default=False, help='if included, disables wandb')
     parser.add_argument('--modality', type=str, default='unimodal', help='unimodal, bimodal')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+    parser.add_argument('--lr_final', type=float, default=1e-6, help='final learning rate')
     parser.add_argument('--batch_size', type=int, default=16, help='batch size for training')
     parser.add_argument('--epochs', type=int, default=60, help='number of epochs for training')
     # parser.add_argument('--optimizer', type=str, default="adam", help='optimizer for training')
@@ -86,6 +87,9 @@ def train(args):
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     # they also had an scheduler that I skipped
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5,
+                                                     patience=20, threshold=0.001,
+                                                     threshold_mode="abs", min_lr=args.lr_final, verbose=True)
     loss_function = nn.CTCLoss(blank=0, zero_infinity=False)
 
     trainingLossCurve = list()
@@ -201,10 +205,14 @@ def train(args):
         validationLossCurve.append(validationLoss)
         validationWERCurve.append(validationWER)
 
+        #make a scheduler step
+        scheduler.step(validationWER)
+
         ######### Visualization using Weights & Biases ##########
         wandb.log({"val/mean_CTC": validationLoss,
                    "val/mean_CER": validationCER,
                    "val/mean_WER": validationWER,
+                   'lr': optimizer.param_groups[0]['lr'],
                    'epoch': epoch}, step=epoch)
 
         # TODO ADD example sentences in log!
