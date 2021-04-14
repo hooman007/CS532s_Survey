@@ -75,7 +75,7 @@ def train(args):
     trainData = DATA_FACTORY[args.data + '_train']
     trainLoader = DataLoader(trainData, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn, **kwargs)
     valData = DATA_FACTORY[args.data + '_val']
-    valLoader = DataLoader(valData, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn, **kwargs)
+    valLoader = DataLoader(valData, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn, **kwargs)
 
     if args.modality == 'unimodal':
         model = UNIMODAL_MODEL_FACTORY[args.model](args)
