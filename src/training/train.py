@@ -2,6 +2,7 @@ from src.models import BIMODAL_MODEL_FACTORY, UNIMODAL_MODEL_FACTORY
 from src.data import DATA_FACTORY
 from src.utils import LOSS_FACTORY
 import argparse
+import os
 import numpy as np
 import torch
 import torch.optim as optim
@@ -10,22 +11,27 @@ from torch.utils.data import DataLoader, random_split
 from src.data.lrs2_utils import collate_fn
 from src.data.lrs2_config import get_LRS2_Cfg
 import matplotlib
+import wandb   # to turn off wandb syncing use arg `--dryrun`
 from tqdm import tqdm
 from src.utils.ctc_utils import ctc_greedy_decode, ctc_search_decode
 from src.utils.metrics import compute_cer, compute_wer
+from src.utils.visualization import visualize_sentences
 
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='CNN_LSTM',
+    parser.add_argument('--model', type=str, default='CNNSelfAttention_transformer',
                         help='BIMODAL: CNN_LSTM, CNNSelfAttention_LSTM, CNN_AttentionLSTM, '
                              'CNNSelfAttention_AttentionLSTM, CNN_transformer, CNNSelfAttention_transformer,'
                              ' \n, UNIMODAL: FC_LSTM, CNN_LSTM')
-    parser.add_argument('--modality', type=str, default='unimodal', help='unimodal, bimodal')
+    parser.add_argument('--run_name', type=str, default=None, help='wandb run name, if None, model name is used')
+    parser.add_argument('--dryrun', action='store_true', default=False, help='if included, disables wandb')
+    parser.add_argument('--modality', type=str, default='bimodal', help='unimodal, bimodal')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
-    parser.add_argument('--batch_size', type=int, default=16, help='batch size for training')
-    parser.add_argument('--epochs', type=int, default=60, help='number of epochs for training')
+    parser.add_argument('--lr_final', type=float, default=1e-6, help='final learning rate')
+    parser.add_argument('--batch_size', type=int, default=32, help='batch size for training')
+    parser.add_argument('--epochs', type=int, default=1000, help='number of epochs for training')
     # parser.add_argument('--optimizer', type=str, default="adam", help='optimizer for training')
     parser.add_argument('--loss', type=str, default='seq2seq', help='seq2seq or CTC')
     parser.add_argument('--data', type=str, default='LRS2', help='grid or LRS2')
@@ -34,17 +40,24 @@ def main():
     parser.add_argument('--d_model', type=int, default=512, help='transformer feature size')
     parser.add_argument('--peMaxLen', type=int, default=2500, help='max len for positional encoding')
     parser.add_argument('--num_heads', type=int, default=8, help='num of attention heads')
-    parser.add_argument('--hidden_dim', type=int, default=2048,
+    parser.add_argument('--hidden_dim', type=int, default=512,
                         help='hidden dim size of FFNs and FC layers and LSTM even')
     parser.add_argument('--dropout', type=float, default=0.1, help='drpout rate')
-    parser.add_argument('--num_layers', type=int, default=6, help='num of layers')
+    parser.add_argument('--num_layers', type=int, default=2, help='num of layers')
     parser.add_argument('--num_classes', type=int, default=40, help='num of classes!')
     parser.add_argument('--decode_scheme', type=str, default='greedy', help='CTC decoding scheme, greedy or search')
         # for lrs2 it's 40, no idea for gird and have to basically change this
 
     args = parser.parse_args()
+    print(f"############ Script Configs ##############")
     print(f"raw args = {args}")
 
+    if args.dryrun:
+        os.environ['WANDB_MODE'] = 'dryrun'
+
+    wandb.init(project='audio_visual_speech_recognition',
+               config=args, name=args.model if args.run_name is None else args.run_name,
+               notes="Speech Recognition Model Survey Research")
     train(args)
 
 
@@ -63,7 +76,7 @@ def train(args):
     trainData = DATA_FACTORY[args.data + '_train']
     trainLoader = DataLoader(trainData, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn, **kwargs)
     valData = DATA_FACTORY[args.data + '_val']
-    valLoader = DataLoader(valData, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn, **kwargs)
+    valLoader = DataLoader(valData, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn, **kwargs)
 
     if args.modality == 'unimodal':
         model = UNIMODAL_MODEL_FACTORY[args.model](args)
@@ -71,9 +84,14 @@ def train(args):
         model = BIMODAL_MODEL_FACTORY[args.model](args)
     model.to(device)
     # print(model)
+    # if args.dryrun is not None:
+    #     wandb.watch(model)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     # they also had an scheduler that I skipped
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5,
+                                                     patience=20, threshold=0.02,
+                                                     threshold_mode="abs", min_lr=args.lr_final, verbose=True)
     loss_function = nn.CTCLoss(blank=0, zero_infinity=False)
 
     trainingLossCurve = list()
@@ -85,9 +103,9 @@ def train(args):
         trainingLoss = 0
         trainingCER = 0
         trainingWER = 0
-
+        print('#################### Starting train #########################')
         for batch, (inputBatch, targetBatch, inputLenBatch, targetLenBatch) in enumerate(
-                tqdm(trainLoader, leave=False, desc="Train", ncols=75)):
+                tqdm(trainLoader, desc="Train", ncols=75)):
 
             inputBatch, targetBatch = ((inputBatch[0].float()).to(device), (inputBatch[1].float()).to(device)), (
                 targetBatch.int()).to(device)
@@ -129,13 +147,19 @@ def train(args):
         trainingLossCurve.append(trainingLoss)
         trainingWERCurve.append(trainingWER)
 
+        ######### Visualization using Weights & Biases ##########
+        wandb.log({"train/mean_CTC": trainingLoss,
+                   "train/mean_CER": trainingCER,
+                   "train/mean_WER": trainingWER,
+                   'epoch': epoch})#, step=epoch)
+        visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'train', epoch)
+
+        print('#################### Starting val #########################')
         evalLoss = 0
         evalCER = 0
         evalWER = 0
-
         for batch, (inputBatch, targetBatch, inputLenBatch, targetLenBatch) in enumerate(
-                tqdm(valLoader, leave=False, desc="Eval",
-                     ncols=75)):
+                tqdm(valLoader, desc="Eval", ncols=75)):
 
             inputBatch, targetBatch = ((inputBatch[0].float()).to(device), (inputBatch[1].float()).to(device)), (
                 targetBatch.int()).to(device)
@@ -182,8 +206,20 @@ def train(args):
         validationWER = evalWER / len(valLoader)
         validationLossCurve.append(validationLoss)
         validationWERCurve.append(validationWER)
+
+        #make a scheduler step
+        scheduler.step(validationCER)
+
+        ######### Visualization using Weights & Biases ##########
+        wandb.log({"val/mean_CTC": validationLoss,
+                   "val/mean_CER": validationCER,
+                   "val/mean_WER": validationWER,
+                   'lr': optimizer.param_groups[0]['lr'],
+                   'epoch': epoch})#, step=epoch)
+        visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'val', epoch)
+
         # printing the stats after each step
-        print("Step: %03d || Tr.Loss: %.6f  Val.Loss: %.6f || Tr.CER: %.3f  Val.CER: %.3f || Tr.WER: %.3f  Val.WER: %.3f"
+        print("epoch: %03d || Tr.Loss: %.6f  Val.Loss: %.6f || Tr.CER: %.3f  Val.CER: %.3f || Tr.WER: %.3f  Val.WER: %.3f"
             % (epoch, trainingLoss, validationLoss, trainingCER, validationCER, trainingWER, validationWER))
 
 

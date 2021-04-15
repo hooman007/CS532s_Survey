@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 
-import grid_dictionaries as gd
-import lrs2_dictionaries as ld
+import grid_dataloader.grid_dictionaries as gd
+import grid_dataloader.lrs2_dictionaries as ld
 
 
 def grid2lrs2labels(grid_embeddings):

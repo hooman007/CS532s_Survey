@@ -25,9 +25,9 @@ class Video_CNN_LSTM(nn.Module):
         # self.videoEncoder = nn.TransformerEncoder(encoderLayer, num_layers=numLayers)
         # self.videoDecoder = nn.TransformerEncoder(encoderLayer, num_layers=numLayers)
         # self.outputConv = nn.Conv1d(dModel, numClasses, kernel_size=1, stride=1, padding=0)
-        self.LSTM = nn.LSTM(input_size=512, hidden_size=args.hidden_dim,
+        self.LSTM = nn.LSTM(input_size=512, hidden_size=args.d_model,
                             num_layers=args.num_layers, dropout=args.dropout)
-        self.outputConv = nn.Conv1d(args.hidden_dim, args.num_classes, kernel_size=1, stride=1, padding=0)
+        self.outputConv = nn.Conv1d(args.d_model, args.num_classes, kernel_size=1, stride=1, padding=0)
 
         return
 

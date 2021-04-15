@@ -8,6 +8,7 @@ https://github.com/lordmartian/deep_avsr
 from torch.utils.data import Dataset
 from scipy.io import wavfile
 import numpy as np
+import random
 
 from src.data.lrs2_utils import prepare_pretrain_input
 from src.data.lrs2_utils import prepare_main_input
@@ -75,7 +76,7 @@ class LRS2Main(Dataset):
     A custom dataset class for the LRS2 main (includes train, val, test) dataset
     """
 
-    def __init__(self, dataset, datadir, reqInpLen, charToIx, stepSize, audioParams, videoParams, noiseParams):
+    def __init__(self, dataset, datadir, reqInpLen, charToIx, stepSize, audioParams, videoParams, noiseParams, subset_ratio=0.2):
         super(LRS2Main, self).__init__()
         with open(datadir + "/" + dataset + ".txt", "r") as f:
             lines = f.readlines()
@@ -83,22 +84,18 @@ class LRS2Main(Dataset):
         self.reqInpLen = reqInpLen
         self.charToIx = charToIx
         self.dataset = dataset
-        self.stepSize = stepSize
         self.audioParams = audioParams
         self.videoParams = videoParams
         _, self.noise = wavfile.read(noiseParams["noiseFile"])
         self.noiseSNR = noiseParams["noiseSNR"]
         self.noiseProb = noiseParams["noiseProb"]
-        return
+
+        if dataset == "train":
+            random.Random(4).shuffle(self.datalist)
+            self.datalist = self.datalist[:int(subset_ratio*len(self.datalist))]
 
 
     def __getitem__(self, index):
-        #using the same procedure as in pretrain dataset class only for the train dataset
-        if self.dataset == "train":
-            base = self.stepSize * np.arange(int(len(self.datalist)/self.stepSize)+1)
-            ixs = base + index
-            ixs = ixs[ixs < len(self.datalist)]
-            index = np.random.choice(ixs)
 
         #passing the sample files and the target file paths to the prepare function to obtain the input tensors
         audioFile = self.datalist[index] + ".wav"
@@ -118,10 +115,7 @@ class LRS2Main(Dataset):
         #using step size only for train dataset and not for val and test datasets because
         #the size of val and test datasets is smaller than step size and we generally want to validate and test
         #on the complete dataset
-        if self.dataset == "train":
-            return self.stepSize
-        else:
-            return len(self.datalist)
+        return len(self.datalist)
 
 
 if __name__ == "__main__":
