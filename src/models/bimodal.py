@@ -417,15 +417,15 @@ class CNN_self_attention_AttentionLSTM(nn.Module):
         all_context = torch.zeros_like(jointBatch) # S, B, dim
         all_out = torch.zeros_like(jointBatch)
         # h = (num_layers, B, dim)
-        for i in range(jointBatch.shape[1]):
-            jointEmbed = jointBatch[:, i:i+1, :]
+        for i in range(jointBatch.shape[0]):
+            jointEmbed = jointBatch[i:i + 1, :, :]
             if i == 0:
                 decoderOut, (h, c) = self.jointDecoder(jointEmbed)
             else:
                 decoderOut, (h, c) = self.jointDecoder(jointEmbed, (h, c))
             context = self.attention(h[-1].unsqueeze(1), jointBatch.transpose(0, 1))  # b, 1, dim
-            all_context[:, i, :] = context.transpose(0, 1)
-            all_out[:, i, :] = decoderOut
+            all_context[i, :, :] = context.transpose(0, 1)
+            all_out[i, :, :] = decoderOut
             h[0] = self.contextFusion(torch.cat([h[0], context[:, 0]], dim=1))
 
         stuff = torch.cat([all_context, all_out], dim=2)  # S, b, 2dim
