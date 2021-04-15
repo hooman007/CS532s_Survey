@@ -11,11 +11,11 @@ from scipy.io import wavfile
 import cv2 as cv
 from scipy.special import softmax
 from src.models.deep_avsr.visual_frontend import VisualFrontend
-from grid2lrs2labels import grid2lrs2labels
+from grid_dataloader.grid2lrs2labels import grid2lrs2labels
 from torch.utils.data import DataLoader, random_split
 
-import grid_dictionaries as gd
-import lrs2_dictionaries as ld
+import grid_dataloader.grid_dictionaries as gd
+import grid_dataloader.lrs2_dictionaries as ld
 
 
 ## NOTE: Depending on how training is done, the below might need to be tweaked
@@ -23,10 +23,12 @@ import lrs2_dictionaries as ld
 ##       renaming all files to ensure that the names do not overlap (e.g., adding
 ##       s<x>_ in front of each .npy file)
 
-DATA_GROUP = "s1"
-
-all_input_files = [f for f in listdir('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/inputs') if isfile(join('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/inputs', f))]
-all_label_files = [f for f in listdir('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/labels') if isfile(join('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/labels', f))]
+group = ["s1", "s2"]
+all_input_files = []
+all_label_files = []
+for DATA_GROUP in group:
+    all_input_files.extend([join('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/inputs', f) for f in listdir('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/inputs') if isfile(join('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/inputs', f))])
+    all_label_files.extend([join('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/labels', f) for f in listdir('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/labels') if isfile(join('./grid_dataloader/GRID_DATA/'+DATA_GROUP+'/labels', f))])
 
 input_files_list = []
 audio_files_list = []
@@ -78,7 +80,7 @@ class Grid_vf(torch.utils.data.Dataset):
     A custom dataset class for the grid (includes train, val, test) dataset
     """
 
-    def __init__(self,  input_file_ids, audio_file_ids, label_file_ids, root_directory):
+    def __init__(self,  input_file_ids, audio_file_ids, label_file_ids):
         super(Grid_vf, self).__init__()
         _, self.noise = wavfile.read('data/LRS2/noise.wav')
         self.noiseSNR = 0
@@ -87,7 +89,6 @@ class Grid_vf(torch.utils.data.Dataset):
         self.input_file_list = input_file_ids
         self.audio_file_list = audio_file_ids
         self.label_file_list = label_file_ids
-        self.root_directory = root_directory
         return
 
 
@@ -96,14 +97,15 @@ class Grid_vf(torch.utils.data.Dataset):
         label_ID = self.label_file_list[index]
         audio_ID = self.audio_file_list[index]
 
-        label_arr = np.load(self.root_directory + 'labels/' + label_ID) # batch_size, 6, 51
+        label_arr = np.load(label_ID) # batch_size, 6, 51
         label_arr = torch.from_numpy(np.expand_dims(label_arr, 0))
         trgt, trgtLen = grid2lrs2labels(label_arr)
+        trgtLen = torch.squeeze(trgtLen)
 
         # get these from Robert
 
         # STFT feature extraction
-        audioFile = self.root_directory + 'inputs/' + audio_ID
+        audioFile = audio_ID
         stftWindow = "hamming"
         stftWinLen = 0.040
         stftOverlap = 0.030
@@ -135,7 +137,7 @@ class Grid_vf(torch.utils.data.Dataset):
         audInp = audInp.T
 
         # loading the visual features
-        vidInp = np.load(self.root_directory + 'inputs/' + input_ID)
+        vidInp = np.load(input_ID)
 
         # padding zero vectors to extend the audio and video length to a least possible integer length such that
         # video length = 4 * audio length
@@ -186,21 +188,21 @@ class Grid_vf(torch.utils.data.Dataset):
         return len(self.input_file_list)
 
 
-
-
-
-gpuAvailable = torch.cuda.is_available()
-print(len(input_files_list), len(audio_files_list), len(label_files_list))
-train_set = Grid_vf(input_files_list, audio_files_list, label_files_list, './grid_dataloader/GRID_DATA/s1/')
-kwargs = {"num_workers": 1, "pin_memory": True} if gpuAvailable else {}
-trainLoader = DataLoader(train_set, batch_size=4, shuffle=False, collate_fn=collate_fn, **kwargs)
-# train_set = Dataset(input_files_list,label_files_list,'./GRID_DATA/s1/')
-# train_dataloader = torch.utils.data.DataLoader(train_set, **params)
-
-data_iter = iter(trainLoader)
-    # inp, trgt, inpLen, trgtLen = next(data_iter)
-(inputBatch, targetBatch, inputLenBatch, targetLenBatch) = next(data_iter)
-print(inputBatch[0].shape, inputBatch[1].shape) # ([580, 8, 321]), [145, 8, 512]
-print(targetBatch) # blue 2 g, orange 3 4 -> [, , , , ]
-print(targetLenBatch.shape) # -> [8, 10]
-print("found data")
+#
+#
+#
+# gpuAvailable = torch.cuda.is_available()
+# print(len(input_files_list), len(audio_files_list), len(label_files_list))
+# train_set = Grid_vf(input_files_list, audio_files_list, label_files_list)
+# kwargs = {"num_workers": 1, "pin_memory": True} if gpuAvailable else {}
+# trainLoader = DataLoader(train_set, batch_size=4, shuffle=False, collate_fn=collate_fn, **kwargs)
+# # train_set = Dataset(input_files_list,label_files_list,'./GRID_DATA/s1/')
+# # train_dataloader = torch.utils.data.DataLoader(train_set, **params)
+#
+# data_iter = iter(trainLoader)
+#     # inp, trgt, inpLen, trgtLen = next(data_iter)
+# (inputBatch, targetBatch, inputLenBatch, targetLenBatch) = next(data_iter)
+# print(inputBatch[0].shape, inputBatch[1].shape) # ([580, 8, 321]), [145, 8, 512]
+# print(targetBatch) # blue 2 g, orange 3 4 -> [, , , , ]
+# print(targetLenBatch.shape) # -> [8, 10]
+# print("found data")
