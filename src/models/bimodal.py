@@ -378,9 +378,9 @@ class CNN_self_attention_AttentionLSTM(nn.Module):
         self.jointDecoder = nn.LSTM(input_size=args.d_model, hidden_size=args.d_model,
                                     num_layers=args.num_layers, dropout=args.dropout)
         self.outputConv = nn.Conv1d(args.d_model, args.num_classes, kernel_size=1, stride=1, padding=0)
-        self.attention = Attention(args.hidden_dim, args.hidden_dim)
-        self.contextFusion = nn.Linear(2*args.hidden_dim, args.hidden_dim)
-        self.outMLP = nn.Linear(2*args.hidden_dim, args.num_classes)
+        self.attention = Attention(args.d_model, args.d_model)
+        self.contextFusion = nn.Linear(2*args.d_model, args.d_model)
+        self.outMLP = nn.Linear(2*args.d_model, args.num_classes)
         return
 
     def forward(self, inputBatch):
@@ -453,9 +453,9 @@ class CNN_AttentionLSTM(nn.Module):
         self.jointDecoder = nn.LSTM(input_size=args.d_model, hidden_size=args.d_model,
                                     num_layers=args.num_layers, dropout=args.dropout)
         self.outputConv = nn.Conv1d(args.d_model, args.num_classes, kernel_size=1, stride=1, padding=0)
-        self.attention = Attention(args.hidden_dim, args.hidden_dim)
-        self.contextFusion = nn.Linear(2 * args.hidden_dim, args.hidden_dim)
-        self.outMLP = nn.Linear(2 * args.hidden_dim, args.num_classes)
+        self.attention = Attention(args.d_model, args.d_model)
+        self.contextFusion = nn.Linear(2 * args.d_model, args.d_model)
+        self.outMLP = nn.Linear(2 * args.d_model, args.num_classes)
         return
 
     def forward(self, inputBatch):
