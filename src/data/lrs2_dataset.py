@@ -107,6 +107,7 @@ class LRS2Main(Dataset):
             noise = None
         inp, trgt, inpLen, trgtLen = prepare_main_input(audioFile, visualFeaturesFile, targetFile, noise, self.reqInpLen, self.charToIx,
                                                         self.noiseSNR, self.audioParams, self.videoParams)
+
         return inp, trgt, inpLen, trgtLen
 
 
@@ -142,10 +143,12 @@ if __name__ == "__main__":
     noiseParams = {"noiseFile":args["DATA_DIRECTORY"] + "/noise.wav", "noiseProb":args["NOISE_PROBABILITY"], "noiseSNR":args["NOISE_SNR_DB"]}
     trainData = LRS2Main("train", args["DATA_DIRECTORY"], args["MAIN_REQ_INPUT_LENGTH"], args["CHAR_TO_INDEX"], args["EPOCH_SIZE"],
                          audioParams, videoParams, noiseParams)
-    trainLoader = DataLoader(trainData, batch_size=1, collate_fn=collate_fn, shuffle=True, **kwargs)
+    trainLoader = DataLoader(trainData, batch_size=2, collate_fn=collate_fn, shuffle=True, **kwargs)
 
     data_iter = iter(trainLoader)
     # inp, trgt, inpLen, trgtLen = next(data_iter)
     (inputBatch, targetBatch, inputLenBatch, targetLenBatch) = next(data_iter)
-
+    print(inputBatch[0].shape, inputBatch[1].shape) # ([580, 8, 321]), [145, 8, 512]
+    print(targetBatch) # blue 2 g, orange 3 4 -> [, , , , ]
+    print(targetLenBatch) # -> [8, 10]
     print("found data")
