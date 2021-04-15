@@ -346,7 +346,7 @@ class Attention(nn.Module):
 
         concatenated = torch.cat([prev_hidden_state, annotations], dim=2)
         attn_energies = self.dense(concatenated).squeeze(2)
-        alpha = F.softmax(attn_energies).unsqueeze(1)
+        alpha = F.softmax(attn_energies, dim=1).unsqueeze(1)
         context = alpha.bmm(annotations)
 
         return context
