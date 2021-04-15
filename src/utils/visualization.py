@@ -19,26 +19,26 @@ def visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, target
     trgt_sentences = []
 
     # table = wandb.Table(columns=["Target", "Prediction"])
+    print("\n")
+    print(f"predictionBatch is {predictionBatch}")
 
     for n in range(5):
-        pred = preds[n].numpy()[:-1]
-        pred_chars = [INDEX_TO_CHAR[indx] for indx in pred]
-        str = ""
-        # pred_sentence = str.join(pred_chars)
-        # pred_sentences.append(str.join(pred_chars))
-        pred_sentences.append(pred_chars)
+        if n < len(preds):
+            pred = preds[n].numpy()[:-1]
+            pred_chars = [INDEX_TO_CHAR[indx] for indx in pred]
+            str = ""
+            pred_sentences.append(str.join(pred_chars))
 
         trgt = trgts[n].numpy()[:-1]
         trgt_chars = [INDEX_TO_CHAR[indx] for indx in trgt]
         str = ""
-        # trgt_sentence = str.join(trgt_chars)
         trgt_sentences.append(str.join(trgt_chars))
 
         # table.add_data(trgt_sentence, pred_sentence)
 
-    print(f"predictionBatch is {predictionBatch}")
     transcription = {'Target': trgt_sentences, 'Prediction': pred_sentences}
     df = pd.DataFrame(data=transcription)
+    print("\n")
     print(df)
     # wandb.log({f"Visualization/{mode}_sentences": wandb.Table(dataframe=df)}, step=epochID)
 
