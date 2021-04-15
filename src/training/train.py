@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--lr_final', type=float, default=1e-6, help='final learning rate')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size for training')
-    parser.add_argument('--epochs', type=int, default=500, help='number of epochs for training')
+    parser.add_argument('--epochs', type=int, default=1000, help='number of epochs for training')
     # parser.add_argument('--optimizer', type=str, default="adam", help='optimizer for training')
     parser.add_argument('--loss', type=str, default='seq2seq', help='seq2seq or CTC')
     parser.add_argument('--data', type=str, default='LRS2', help='grid or LRS2')
@@ -40,10 +40,10 @@ def main():
     parser.add_argument('--d_model', type=int, default=512, help='transformer feature size')
     parser.add_argument('--peMaxLen', type=int, default=2500, help='max len for positional encoding')
     parser.add_argument('--num_heads', type=int, default=8, help='num of attention heads')
-    parser.add_argument('--hidden_dim', type=int, default=2048,
+    parser.add_argument('--hidden_dim', type=int, default=512,
                         help='hidden dim size of FFNs and FC layers and LSTM even')
     parser.add_argument('--dropout', type=float, default=0.1, help='drpout rate')
-    parser.add_argument('--num_layers', type=int, default=6, help='num of layers')
+    parser.add_argument('--num_layers', type=int, default=2, help='num of layers')
     parser.add_argument('--num_classes', type=int, default=40, help='num of classes!')
     parser.add_argument('--decode_scheme', type=str, default='greedy', help='CTC decoding scheme, greedy or search')
         # for lrs2 it's 40, no idea for gird and have to basically change this
