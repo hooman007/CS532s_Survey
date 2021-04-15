@@ -306,7 +306,7 @@ class Attention(nn.Module):
         super(Attention, self).__init__()
         self.dense = nn.Sequential(
             nn.Linear(hidden_size + annotation_size, hidden_size),
-            nn.Relu(),
+            nn.ReLU(),
             nn.Linear(hidden_size, 1)
         )
 
@@ -342,7 +342,7 @@ class Attention(nn.Module):
         '''
         batch_size, sequence_length, _ = annotations.size()
 
-        prev_hidden_state = prev_hidden_state.repeat(sequence_length, 1, 1).transpose(0, 1)
+        prev_hidden_state = prev_hidden_state.repeat(1, sequence_length , 1)
 
         concatenated = torch.cat([prev_hidden_state, annotations], dim=2)
         attn_energies = self.dense(concatenated).squeeze(2)
@@ -414,15 +414,15 @@ class CNN_self_attention_AttentionLSTM(nn.Module):
             print("Both audio and visual inputs missing.")
             exit()
 
-        all_context = torch.zeros_like(jointBatch.shape) # S, B, dim
-        all_out = torch.zeros_like(jointBatch.shape)
+        all_context = torch.zeros_like(jointBatch) # S, B, dim
+        all_out = torch.zeros_like(jointBatch)
         # h = (num_layers, B, dim)
         for i in range(jointBatch.shape[1]):
             jointEmbed = jointBatch[:, i:i+1, :]
             if i == 0:
-                decoderOut, h, c = self.jointDecoder(jointEmbed)
+                decoderOut, (h, c) = self.jointDecoder(jointEmbed)
             else:
-                decoderOut, h, c = self.jointDecoder(jointEmbed, (h, c))
+                decoderOut, (h, c) = self.jointDecoder(jointEmbed, (h, c))
             context = self.attention(h[-1].unsqueeze(1), jointBatch.transpose(0, 1))  # b, 1, dim
             all_context[:, i, :] = context.transpose(0, 1)
             all_out[:, i, :] = decoderOut
@@ -483,18 +483,18 @@ class CNN_AttentionLSTM(nn.Module):
             print("Both audio and visual inputs missing.")
             exit()
 
-        all_context = torch.zeros_like(jointBatch.shape)  # S, B, dim
-        all_out = torch.zeros_like(jointBatch.shape)
+        all_context = torch.zeros_like(jointBatch)  # S, B, dim
+        all_out = torch.zeros_like(jointBatch)
         # h = (num_layers, B, dim)
-        for i in range(jointBatch.shape[1]):
-            jointEmbed = jointBatch[:, i:i + 1, :]
+        for i in range(jointBatch.shape[0]):
+            jointEmbed = jointBatch[i:i + 1,:, :]
             if i == 0:
-                decoderOut, h, c = self.jointDecoder(jointEmbed)
+                decoderOut, (h, c) = self.jointDecoder(jointEmbed)
             else:
-                decoderOut, h, c = self.jointDecoder(jointEmbed, (h, c))
+                decoderOut, (h, c) = self.jointDecoder(jointEmbed, (h, c))
             context = self.attention(h[-1].unsqueeze(1), jointBatch.transpose(0, 1))  # b, 1, dim
-            all_context[:, i, :] = context.transpose(0, 1)
-            all_out[:, i, :] = decoderOut
+            all_context[i, :, :] = context.transpose(0, 1)
+            all_out[i, :, :] = decoderOut
             h[0] = self.contextFusion(torch.cat([h[0], context[:, 0]], dim=1))
 
         stuff = torch.cat([all_context, all_out], dim=2)  # S, b, 2dim
