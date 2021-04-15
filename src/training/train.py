@@ -90,7 +90,7 @@ def train(args):
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     # they also had an scheduler that I skipped
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5,
-                                                     patience=20, threshold=0.001,
+                                                     patience=20, threshold=0.02,
                                                      threshold_mode="abs", min_lr=args.lr_final, verbose=True)
     loss_function = nn.CTCLoss(blank=0, zero_infinity=False)
 
@@ -208,7 +208,7 @@ def train(args):
         validationWERCurve.append(validationWER)
 
         #make a scheduler step
-        scheduler.step(validationLoss)
+        scheduler.step(validationCER)
 
         ######### Visualization using Weights & Biases ##########
         wandb.log({"val/mean_CTC": validationLoss,
