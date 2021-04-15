@@ -49,6 +49,7 @@ def main():
         # for lrs2 it's 40, no idea for gird and have to basically change this
 
     args = parser.parse_args()
+    print(f"############ Script Configs ##############")
     print(f"raw args = {args}")
 
     if args.dryrun:
@@ -102,7 +103,7 @@ def train(args):
         trainingLoss = 0
         trainingCER = 0
         trainingWER = 0
-
+        print('#################### Starting train #########################')
         for batch, (inputBatch, targetBatch, inputLenBatch, targetLenBatch) in enumerate(
                 tqdm(trainLoader, desc="Train", ncols=75)):
 
@@ -153,10 +154,10 @@ def train(args):
                    'epoch': epoch})#, step=epoch)
         visualize_sentences(predictionBatch, targetBatch, predictionLenBatch, targetLenBatch, 'train', epoch)
 
+        print('#################### Starting val #########################')
         evalLoss = 0
         evalCER = 0
         evalWER = 0
-
         for batch, (inputBatch, targetBatch, inputLenBatch, targetLenBatch) in enumerate(
                 tqdm(valLoader, desc="Eval", ncols=75)):
 
