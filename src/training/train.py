@@ -28,12 +28,13 @@ def main():
     parser.add_argument('--run_name', type=str, default=None, help='wandb run name, if None, model name is used')
     parser.add_argument('--dryrun', action='store_true', default=False, help='if included, disables wandb')
     parser.add_argument('--modality', type=str, default='bimodal', help='unimodal, bimodal')
+    parser.add_argument('--modality_opmode', type=str, default='AV', help='AO, VO, AV')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--lr_final', type=float, default=1e-6, help='final learning rate')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size for training')
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs for training')
     # parser.add_argument('--optimizer', type=str, default="adam", help='optimizer for training')
-    parser.add_argument('--loss', type=str, default='seq2seq', help='seq2seq or CTC')
+    parser.add_argument('--loss', type=str, default='CTC', help='seq2seq or CTC')
     parser.add_argument('--data', type=str, default='LRS2', help='grid or LRS2')
     parser.add_argument('--seed', type=int, default=1234, help='random seed')
     parser.add_argument('--num_workers', type=int, default=1, help='num_workers')
@@ -99,6 +100,19 @@ def train(args):
     trainingWERCurve = list()
     validationWERCurve = list()
 
+    if args.modality_opmode == "AO":
+        print("AUDIO ONLY MODALITY")
+        train_modality_probs = [1,0, 0]  # ["AO", "VO", "AV"]
+        vali_modality_probs = [1, 0, 0]  #["AO", "VO", "AV"]
+    elif args.modality_opmode == "VO":
+        print("VIDEO ONLY MODALITY")
+        train_modality_probs = [0, 1, 0]  # ["AO", "VO", "AV"]
+        vali_modality_probs = [0, 1, 0]  #["AO", "VO", "AV"]
+    elif args.modality_opmode == "AV":
+        print("BIMODAL")
+        train_modality_probs = [0.2, 0.2, 0.6]  #["AO", "VO", "AV"]
+        vali_modality_probs = [0, 0, 1]  #["AO", "VO", "AV"]
+
     for epoch in range(args.epochs):
         trainingLoss = 0
         trainingCER = 0
@@ -111,8 +125,7 @@ def train(args):
                 targetBatch.int()).to(device)
             inputLenBatch, targetLenBatch = (inputLenBatch.int()).to(device), (targetLenBatch.int()).to(device)
 
-            opmode = np.random.choice(["AO", "VO", "AV"],
-                                      p=[0.2, 0.2, 0.6])
+            opmode = np.random.choice(["AO", "VO", "AV"], p=train_modality_probs)
             if opmode == "AO":
                 inputBatch = (inputBatch[0], None)
             elif opmode == "VO":
@@ -166,7 +179,7 @@ def train(args):
             inputLenBatch, targetLenBatch = (inputLenBatch.int()).to(device), (targetLenBatch.int()).to(device)
 
 
-            opmode = np.random.choice(["AO", "VO", "AV"], p=[0, 0, 1])
+            opmode = np.random.choice(["AO", "VO", "AV"], p=vali_modality_probs)
             if opmode == "AO":
                 inputBatch = (inputBatch[0], None)
             elif opmode == "VO":
